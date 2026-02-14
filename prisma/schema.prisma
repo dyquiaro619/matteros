@@ -7,9 +7,74 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Matter {
-  id        String   @id @default(cuid())
-  title     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum MatterType {
+  WORK_PERMIT_EXTENSION
+  PR
+  FAMILY_SPONSORSHIP
+  STUDY_PERMIT_EXTENSION
+  ASYLUM
 }
+
+enum MatterStage {
+  INTAKE_ELIGIBILITY
+  EVIDENCE_GATHERING
+  CASE_PREPARATION
+  QUALITY_ASSURANCE
+  FILED
+  POST_FILING_BIOMETRICS
+  RFE_NOID
+  INTERVIEW_HEARING
+  FINAL_DECISION
+}
+
+enum EventType {
+  STAGE_CHANGED
+  POLICY_SNAPSHOT_CREATED
+  RISK_FLAGGED
+  NOTE_ADDED
+  DEADLINE_ADDED
+  DEADLINE_UPDATED
+}
+
+model Matter {
+  id          String     @id @default(cuid())
+  externalRef String?    @unique // optional: firm’s internal file # / PMS id
+  title       String
+  type        MatterType
+  stage       MatterStage @default(INTAKE_ELIGIBILITY)
+
+  jurisdictionOffice String? // e.g. USCIS Nebraska, IRCC office (keep flexible)
+  clientRiskSensitivity Int?  // v1 placeholder (0-100 later)
+
+  policySnapshotId String?
+  policySnapshot   PolicySnapshot? @relation(fields: [policySnapshotId], references: [id])
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  events      MatterEvent[]
+}
+
+model PolicySnapshot {
+  id          String   @id @default(cuid())
+  label       String   // e.g. "IRCC Policy Set 2026-02-14"
+  source      String?  // optional: URL or internal note
+  capturedAt  DateTime @default(now())
+
+  matters     Matter[]
+}
+
+model MatterEvent {
+  id        String    @id @default(cuid())
+  matterId  String
+  matter    Matter    @relation(fields: [matterId], references: [id])
+
+  type      EventType
+  // store structured details without over-modeling early
+  payload   Json?
+
+  createdAt DateTime  @default(now())
+
+  @@index([matterId, createdAt])
+}
+
