@@ -6,27 +6,28 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function POST(req: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
-    const body = await req.json();
 
+    const orgId = req.headers.get("x-org-id");
+    if (!orgId) {
+      return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+    }
+
+    const body = await req.json();
     const snapshotId = body?.snapshotId;
 
     if (!snapshotId) {
-      return NextResponse.json(
-        { error: "snapshotId is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "snapshotId is required" }, { status: 400 });
     }
 
-    const matter = await prisma.matter.findUnique({
-      where: { id },
+    // ✅ Tenant-safe ownership check
+    const matter = await prisma.matter.findFirst({
+      where: { id, organizationId: orgId },
       select: { id: true },
     });
 
     if (!matter) {
-      return NextResponse.json(
-        { error: "Matter not found" },
-        { status: 404 }
-      );
+      // 404 prevents leaking whether the matter exists in another org
+      return NextResponse.json({ error: "Matter not found" }, { status: 404 });
     }
 
     const snapshot = await prisma.policySnapshot.findUnique({
@@ -35,15 +36,12 @@ export async function POST(req: Request, ctx: Ctx) {
     });
 
     if (!snapshot) {
-      return NextResponse.json(
-        { error: "PolicySnapshot not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "PolicySnapshot not found" }, { status: 404 });
     }
 
     const result = await prisma.$transaction(async (tx) => {
       const updatedMatter = await tx.matter.update({
-        where: { id },
+        where: { id }, // safe because we already verified ownership
         data: { policySnapshotId: snapshotId },
       });
 
@@ -51,9 +49,7 @@ export async function POST(req: Request, ctx: Ctx) {
         data: {
           matterId: id,
           type: "POLICY_SNAPSHOT_CREATED",
-          payload: {
-            snapshotId,
-          },
+          payload: { snapshotId },
         },
       });
 

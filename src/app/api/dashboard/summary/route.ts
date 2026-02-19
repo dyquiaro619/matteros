@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const orgId = req.headers.get("x-org-id");
+if (!orgId) return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+
   const matters = await prisma.matter.findMany({
+    where: { organizationId: orgId },
     include: { events: true },
   });
 

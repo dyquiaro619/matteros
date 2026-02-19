@@ -38,6 +38,10 @@ enum EventType {
 
 model Matter {
   id          String     @id @default(cuid())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
   externalRef String?    @unique // optional: firm’s internal file # / PMS id
   title       String
   type        MatterType
@@ -53,6 +57,8 @@ model Matter {
   updatedAt   DateTime   @updatedAt
 
   events      MatterEvent[]
+
+  @@index([organizationId])
 }
 
 model PolicySnapshot {
@@ -78,3 +84,10 @@ model MatterEvent {
   @@index([matterId, createdAt])
 }
 
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  matters   Matter[]
+}

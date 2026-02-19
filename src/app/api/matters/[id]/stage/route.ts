@@ -4,7 +4,6 @@ import { MatterStage } from "@prisma/client";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// v1 stage machine (adjust later)
 const allowedTransitions: Record<MatterStage, MatterStage[]> = {
   INTAKE_ELIGIBILITY: ["EVIDENCE_GATHERING"],
   EVIDENCE_GATHERING: ["CASE_PREPARATION"],
@@ -14,7 +13,7 @@ const allowedTransitions: Record<MatterStage, MatterStage[]> = {
   POST_FILING_BIOMETRICS: ["RFE_NOID", "INTERVIEW_HEARING", "FINAL_DECISION"],
   RFE_NOID: ["EVIDENCE_GATHERING", "INTERVIEW_HEARING", "FINAL_DECISION"],
   INTERVIEW_HEARING: ["FINAL_DECISION"],
-  FINAL_DECISION: [], // terminal
+  FINAL_DECISION: [],
 };
 
 function isValidStage(value: any): value is MatterStage {
@@ -24,22 +23,25 @@ function isValidStage(value: any): value is MatterStage {
 export async function POST(req: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
-    const body = await req.json();
 
+    const orgId = req.headers.get("x-org-id");
+    if (!orgId) {
+      return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+    }
+
+    const body = await req.json();
     const toStage = body?.toStage;
 
     if (!isValidStage(toStage)) {
       return NextResponse.json(
-        {
-          error: "Invalid toStage",
-          allowed: Object.keys(allowedTransitions),
-        },
+        { error: "Invalid toStage", allowed: Object.keys(allowedTransitions) },
         { status: 400 }
       );
     }
 
-    const matter = await prisma.matter.findUnique({
-      where: { id },
+    // ✅ Tenant-safe ownership check
+    const matter = await prisma.matter.findFirst({
+      where: { id, organizationId: orgId },
       select: { id: true, stage: true },
     });
 
@@ -52,35 +54,32 @@ export async function POST(req: Request, ctx: Ctx) {
 
     if (!allowed.includes(toStage)) {
       return NextResponse.json(
-        {
-          error: "Invalid stage transition",
-          fromStage,
-          toStage,
-          allowedNextStages: allowed,
-        },
+        { error: "Invalid stage transition", fromStage, toStage, allowedNextStages: allowed },
         { status: 400 }
       );
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const updated = await tx.matter.update({
-        where: { id },
+      // extra hardening: org-scoped update
+      const updatedCount = await tx.matter.updateMany({
+        where: { id, organizationId: orgId },
         data: { stage: toStage },
       });
+
+      if (updatedCount.count !== 1) {
+        // should not happen if ownership check succeeded, but keeps it safe
+        throw new Error("Matter update failed (tenant scope mismatch)");
+      }
 
       const event = await tx.matterEvent.create({
         data: {
           matterId: id,
           type: "STAGE_CHANGED",
-          payload: {
-            fromStage,
-            toStage,
-            // later: byUserId, reason, source, etc.
-          },
+          payload: { fromStage, toStage },
         },
       });
 
-      return { updated, event };
+      return { ok: true, fromStage, toStage, event };
     });
 
     return NextResponse.json(result, { status: 200 });

@@ -6,6 +6,8 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function POST(req: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params; // ✅ important in Next 15/16
+    const ownership = await assertMatterOwnedByOrg(req, id);
+    if ("error" in ownership) return ownership.error;
     const body = await req.json();
 
     if (!body?.type) {
@@ -31,8 +33,30 @@ export async function POST(req: Request, ctx: Ctx) {
 
 type GetCtx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, ctx: GetCtx) {
+async function assertMatterOwnedByOrg(req: Request, matterId: string) {
+  const orgId = req.headers.get("x-org-id");
+  if (!orgId) {
+    return { error: NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 }) };
+  }
+
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, organizationId: orgId },
+    select: { id: true },
+  });
+
+  if (!matter) {
+    // 404 is preferred to avoid leaking existence
+    return { error: NextResponse.json({ error: "Matter not found" }, { status: 404 }) };
+  }
+
+  return { orgId };
+}
+
+export async function GET(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
+
+  const ownership = await assertMatterOwnedByOrg(req, id);
+  if ("error" in ownership) return ownership.error;
 
   const events = await prisma.matterEvent.findMany({
     where: { matterId: id },
@@ -40,4 +64,5 @@ export async function GET(_req: Request, ctx: GetCtx) {
   });
 
   return NextResponse.json(events);
+
 }

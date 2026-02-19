@@ -36,7 +36,26 @@ MatterOS is a legal orchestration engine built with:
 - Prisma configured
 - Migrations applied
 - Dev server running clean
-- API route for matters being implemented
+- API route for matters being implemented 
+
+## Current State (Feb 17, 2026)
+- Implemented core Matter API:
+    Create / list matters.
+- Implemented immutable MatterEvent ledger (append-only).
+- Implemented controlled Stage Machine with validated transitions.
+- Implemented PolicySnapshot creation + transactional attachment.
+- Implemented deterministic risk detection endpoint (/at-risk).
+- Added initial dashboard summary endpoint for governance visibility. 
+
+## Current State (Feb 18, 2026)
+
+- Added Organization model.
+- Implemented tenant isolation via organizationId.
+- Secured all core routes with organization scoping.
+- Verified cross-organization access is blocked.
+- Foundation ready for auth layer. 
+
+
 
 ## Strategic Vision
 MatterOS is designed as:
