@@ -55,7 +55,25 @@ MatterOS is a legal orchestration engine built with:
 - Verified cross-organization access is blocked.
 - Foundation ready for auth layer. 
 
+## Current State (Feb 19, 2026)
+- Connected frontend to real backend /api/matters endpoint.
+- Replaced mock matters with live API data.
+- Verified filtering works with real data (stage, status, search).
+- Confirmed at-risk logic displays correctly from backend risk flags.
 
+## Current State (Feb 20, 2026)
+- frontend shell connected to backend; 
+- Matter Detail started using backend data; timeline/events endpoint integrated and visible in UI.
+
+## Current State (Feb 24, 2026)
+Dev Log – Org Auth & Invite System
+-Implemented stateless Supabase JWT auth for API routes
+-Added role-based org membership validation
+-Created org creation flow with automatic partner assignment
+-Built invite generation (token, expiry, maxUses)
+-Implemented transactional invite consumption
+-Completed end-to-end smoke testing via direct API calls
+Auth + multi-tenant invite flow is operational.
 
 ## Strategic Vision
 MatterOS is designed as:

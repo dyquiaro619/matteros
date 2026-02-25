@@ -34,52 +34,58 @@ enum EventType {
   NOTE_ADDED
   DEADLINE_ADDED
   DEADLINE_UPDATED
+  CALL_LOGGED
+  NEXT_STEP_SET
+  NEXT_STEP_DONE
+  POLICY_CHANGED
 }
 
 model Matter {
-  id          String     @id @default(cuid())
+  id String @id @default(cuid())
 
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
-  externalRef String?    @unique // optional: firm’s internal file # / PMS id
+  externalRef String?     @unique // optional: firm’s internal file # / PMS id
   title       String
   type        MatterType
   stage       MatterStage @default(INTAKE_ELIGIBILITY)
 
-  jurisdictionOffice String? // e.g. USCIS Nebraska, IRCC office (keep flexible)
-  clientRiskSensitivity Int?  // v1 placeholder (0-100 later)
+  caseProfile Json? //{"countries": ["Somalia"], "programs": ["TPS"]}
+
+  jurisdictionOffice    String? // e.g. USCIS Nebraska, IRCC office (keep flexible)
+  clientRiskSensitivity Int? // v1 placeholder (0-100 later)
 
   policySnapshotId String?
   policySnapshot   PolicySnapshot? @relation(fields: [policySnapshotId], references: [id])
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  events      MatterEvent[]
+  events MatterEvent[]
 
   @@index([organizationId])
 }
 
 model PolicySnapshot {
-  id          String   @id @default(cuid())
-  label       String   // e.g. "IRCC Policy Set 2026-02-14"
-  source      String?  // optional: URL or internal note
-  capturedAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  label      String // e.g. "IRCC Policy Set 2026-02-14"
+  source     String? // optional: URL or internal note
+  capturedAt DateTime @default(now())
 
-  matters     Matter[]
+  matters Matter[]
 }
 
 model MatterEvent {
-  id        String    @id @default(cuid())
-  matterId  String
-  matter    Matter    @relation(fields: [matterId], references: [id])
+  id       String @id @default(cuid())
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id])
 
-  type      EventType
+  type    EventType
   // store structured details without over-modeling early
-  payload   Json?
+  payload Json?
 
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([matterId, createdAt])
 }
@@ -89,5 +95,43 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
-  matters   Matter[]
+  matters     Matter[]
+  memberships OrgMembership[]
+  invites     OrgInvite[]
+}
+
+enum UserRole {
+  partner
+  attorney
+  paralegal
+  intake
+}
+
+model OrgMembership {
+  organizationId String
+  userId         String
+  role           UserRole
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@index([userId])
+}
+
+model OrgInvite {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String?
+  role           UserRole
+  token          String   @unique
+  expiresAt      DateTime
+  maxUses        Int      @default(1)
+  usedCount      Int      @default(0)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
