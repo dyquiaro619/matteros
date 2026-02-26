@@ -2,23 +2,26 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { MatterDTO, RiskFlag, MatterStatus } from "@/lib/dto/matter";
 
-// export async function GET(req: Request) {
-//  const orgId = req.headers.get("x-org-id");
-// if (!orgId) return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+// --- CORS (dev) ---
+const ALLOWED_ORIGIN = "http://localhost:8080";
 
-// const matters = await prisma.matter.findMany({
-//   where: { organizationId: orgId },
-//   orderBy: { createdAt: "desc" },
-//   include: { policySnapshot: true },
-// });
-//   return NextResponse.json(matters);
-// }
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    // важно: добавили X-Org-Id
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Org-Id",
+    "Access-Control-Max-Age": "86400",
+  };
+}
 
-
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders() });
+}
+// --- /CORS ---
 
 function deriveRiskFlags(m: any): RiskFlag[] {
   const flags: RiskFlag[] = [];
-
   if (!m.policySnapshotId) {
     flags.push({
       id: "missing-snapshot",
@@ -28,7 +31,6 @@ function deriveRiskFlags(m: any): RiskFlag[] {
       createdAt: m.updatedAt,
     });
   }
-
   for (const e of m.events ?? []) {
     if (e.type === "RISK_FLAGGED") {
       const sev = (e.payload?.severity as any) ?? "medium";
@@ -41,7 +43,6 @@ function deriveRiskFlags(m: any): RiskFlag[] {
       });
     }
   }
-
   return flags;
 }
 
@@ -61,12 +62,18 @@ function deriveLastTouchAt(m: any): string {
 
 export async function GET(req: Request) {
   const orgId = req.headers.get("x-org-id");
-  if (!orgId) return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+  if (!orgId) {
+    return NextResponse.json(
+      { error: "Missing X-Org-Id" },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
 
   const matters = await prisma.matter.findMany({
     where: { organizationId: orgId },
     include: {
       events: { select: { id: true, type: true, payload: true, createdAt: true } },
+                   
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -76,10 +83,11 @@ export async function GET(req: Request) {
     return {
       id: m.id,
       title: m.title,
-      clientId: null,
+      clientId: m.clientId,
+      organizationId: m.organizationId,
       type: "Immigration",
-      caseType: m.type as MatterDTO["caseType"] ?? null,
-      stage: m.stage, // later map to UI stage labels
+      caseType: (m.type as MatterDTO["caseType"]) ?? null,
+      stage: m.stage,
       status: deriveStatus(m, riskFlags),
       ownerUserId: null,
       teamUserIds: [],
@@ -91,36 +99,38 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json(dto);
+  return NextResponse.json(dto, { headers: corsHeaders() });
 }
 
 export async function POST(req: Request) {
+  const orgId = req.headers.get("x-org-id");
+  if (!orgId) {
+    return NextResponse.json(
+      { error: "Missing X-Org-Id" },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
   const body = await req.json();
 
   if (!body?.title || !body?.type) {
     return NextResponse.json(
       { error: "title and type are required" },
-      { status: 400 }
+      { status: 400, headers: corsHeaders() }
     );
   }
-  const orgId = req.headers.get("x-org-id");
-if (!orgId) {
-  return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
-}
 
   const matter = await prisma.matter.create({
     data: {
       title: body.title,
-      type: body.type, // must match enum MatterType (e.g. "PR")
+      type: body.type,
       organizationId: orgId,
       externalRef: body.externalRef ?? null,
       jurisdictionOffice: body.jurisdictionOffice ?? null,
       clientRiskSensitivity:
-        typeof body.clientRiskSensitivity === "number"
-          ? body.clientRiskSensitivity
-          : null,
+        typeof body.clientRiskSensitivity === "number" ? body.clientRiskSensitivity : null,
     },
   });
 
-  return NextResponse.json(matter, { status: 201 });
+  return NextResponse.json(matter, { status: 201, headers: corsHeaders() });
 }

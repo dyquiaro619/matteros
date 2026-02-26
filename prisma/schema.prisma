@@ -64,7 +64,11 @@ model Matter {
 
   events MatterEvent[]
 
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id])
+
   @@index([organizationId])
+  @@index([clientId])
 }
 
 model PolicySnapshot {
@@ -98,6 +102,7 @@ model Organization {
   matters     Matter[]
   memberships OrgMembership[]
   invites     OrgInvite[]
+  clients     Client[]
 }
 
 enum UserRole {
@@ -132,6 +137,22 @@ model OrgInvite {
   createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  firstName String
+  lastName  String
+  email     String?
+
+  createdAt DateTime @default(now())
+
+  matters Matter[]
 
   @@index([organizationId])
 }

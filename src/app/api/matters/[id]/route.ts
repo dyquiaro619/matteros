@@ -106,6 +106,7 @@ export async function GET(req: Request, ctx: Ctx) {
     where: { id, organizationId: orgId },
     include: {
       events: { select: { id: true, type: true, payload: true, createdAt: true } },
+    
     },
   });
 
