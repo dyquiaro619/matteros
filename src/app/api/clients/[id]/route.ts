@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireOrgRole } from "@/lib/guards";
 
 export async function GET(
-  req: Request,
-  ctx: { params: Promise<{ id: string; clientId: string }> }
+  req: NextRequest,
+  { params }: { params: { orgId: string; clientId: string } }
 ) {
-  const { id, clientId } = await ctx.params;
-  const orgId = id;
+  const { orgId, clientId } = params;
 
   const auth = await requireUser(req);
   if (!auth.ok) return auth.res;
@@ -21,7 +20,7 @@ export async function GET(
   if (!guard.ok) return guard.res;
 
   const client = await prisma.client.findFirst({
-    where: { id: clientId, organizationId: orgId }, // важно: tenant isolation
+    where: { id: clientId, organizationId: orgId }, // tenant isolation
     select: { id: true, firstName: true, lastName: true, email: true },
   });
 
