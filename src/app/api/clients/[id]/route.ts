@@ -1,12 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+// src/app/api/clients/[id]/route.ts
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireOrgRole } from "@/lib/guards";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { orgId: string; clientId: string } }
-) {
-  const { orgId, clientId } = params;
+type Ctx = { params: { id: string } };
+
+export async function GET(req: Request, ctx: Ctx) {
+  const orgId = req.headers.get("x-org-id");
+  if (!orgId) {
+    return NextResponse.json({ error: "Missing X-Org-Id" }, { status: 400 });
+  }
+
+  const { id: clientId } = ctx.params;
 
   const auth = await requireUser(req);
   if (!auth.ok) return auth.res;
@@ -20,7 +25,7 @@ export async function GET(
   if (!guard.ok) return guard.res;
 
   const client = await prisma.client.findFirst({
-    where: { id: clientId, organizationId: orgId }, // tenant isolation
+    where: { id: clientId, organizationId: orgId },
     select: { id: true, firstName: true, lastName: true, email: true },
   });
 
