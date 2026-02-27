@@ -1,14 +1,13 @@
-import { NextResponse } from "next/server";
-import { requireUser, requireOrgMember } from "@/lib/guards";
+import { NextRequest, NextResponse } from "next/server";
+// ...your imports
 
-export async function GET(_: Request, ctx: { params: Promise<{ orgId: string }> }) {
-  const { orgId } = await ctx.params;
+export async function GET(
+  _: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const orgId = id; // alias if your code expects orgId
 
-  const auth = await requireUser();
-  if (!auth.ok) return auth.res;
-
-  const member = await requireOrgMember(orgId, auth.user.id);
-  if (!member.ok) return member.res;
-
-  return NextResponse.json({ orgId, role: member.role });
+  // ...rest of your logic
+  return NextResponse.json({ orgId /*, role */ });
 }
