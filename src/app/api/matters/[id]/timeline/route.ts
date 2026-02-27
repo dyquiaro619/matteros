@@ -17,6 +17,30 @@ function mapLedgerToTimeline(e: any): TimelineEventDTO {
     },
   };
 
+  if (e.type === "LOG_TIMELINE_EVENT") {
+    const p = e.payload ?? {};
+
+    return {
+      ...base,
+      ts: typeof p.ts === "string" ? p.ts : base.ts,
+      channel: p.channel ?? "note",
+      summary: p.summary ?? "Timeline event",
+      participants: Array.isArray(p.participants) ? p.participants : [],
+      extractedFacts: Array.isArray(p.extractedFacts) ? p.extractedFacts : [],
+      extractedActions: Array.isArray(p.extractedActions)
+        ? p.extractedActions.map((a: any) => ({
+            id: String(a.id ?? `${e.id}-a`),
+            text: String(a.text ?? ""),
+            status: a.status === "done" ? "done" : "pending",
+            assigneeId: a.assigneeId ?? undefined,
+          }))
+        : [],
+      confidentialityLevel: p.confidentialityLevel ?? "matter-only",
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      source: p.source ?? base.source,
+    };
+  }
+
    if (e.type === "POLICY_CHANGED" ) {
     return {
       ...base,
@@ -29,9 +53,14 @@ function mapLedgerToTimeline(e: any): TimelineEventDTO {
         deepLinkMock: e.payload?.sourceUrl ?? `matter://events/${e.id}`,
         content: e.payload?.details ?? undefined,
       },
+      
     };
-  }
+    
+    
+    
 
+    
+  }
 
   switch (e.type) {
     case "NOTE_ADDED":
