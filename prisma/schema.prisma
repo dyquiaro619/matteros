@@ -7,12 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
 enum MatterType {
   WORK_PERMIT_EXTENSION
   PR
   FAMILY_SPONSORSHIP
   STUDY_PERMIT_EXTENSION
   ASYLUM
+  TPS
+  REMOVAL_DEFENSE
 }
 
 enum MatterStage {
@@ -34,47 +38,209 @@ enum EventType {
   NOTE_ADDED
   DEADLINE_ADDED
   DEADLINE_UPDATED
+  CALL_LOGGED
+  NEXT_STEP_SET
+  NEXT_STEP_DONE
+  POLICY_CHANGED
+  LOG_TIMELINE_EVENT
 }
 
-model Matter {
-  id          String     @id @default(cuid())
-  externalRef String?    @unique // optional: firm’s internal file # / PMS id
-  title       String
-  type        MatterType
-  stage       MatterStage @default(INTAKE_ELIGIBILITY)
+enum UserRole {
+  partner
+  attorney
+  paralegal
+  intake
+}
 
-  jurisdictionOffice String? // e.g. USCIS Nebraska, IRCC office (keep flexible)
-  clientRiskSensitivity Int?  // v1 placeholder (0-100 later)
+enum IntakeStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  REVIEWED
+  CONVERTED
+  REJECTED
+}
 
-  policySnapshotId String?
-  policySnapshot   PolicySnapshot? @relation(fields: [policySnapshotId], references: [id])
+enum IntakeDocStatus {
+  PENDING
+  UPLOADED
+  FAILED
+}
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+// ─── Core Models (existing) ───────────────────────────────────────────────────
 
-  events      MatterEvent[]
+model Organization {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+
+  Client        Client[]
+  Matter        Matter[]
+  OrgInvite     OrgInvite[]
+  OrgMembership OrgMembership[]
+}
+
+model OrgMembership {
+  organizationId String
+  userId         String
+  role           UserRole
+  createdAt      DateTime     @default(now())
+  Organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@index([userId])
+}
+
+model OrgInvite {
+  id             String       @id
+  organizationId String
+  email          String?
+  role           UserRole
+  token          String       @unique
+  expiresAt      DateTime
+  maxUses        Int          @default(1)
+  usedCount      Int          @default(0)
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  Organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Client {
+  id             String       @id
+  organizationId String
+  firstName      String
+  lastName       String
+  email          String?
+  address        String?
+  createdAt      DateTime     @default(now())
+  Organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  Matter         Matter[]
+
+  @@index([organizationId])
 }
 
 model PolicySnapshot {
-  id          String   @id @default(cuid())
-  label       String   // e.g. "IRCC Policy Set 2026-02-14"
-  source      String?  // optional: URL or internal note
-  capturedAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  label      String
+  source     String?
+  capturedAt DateTime @default(now())
 
-  matters     Matter[]
+  matters Matter[]
+}
+
+model Matter {
+  id                    String          @id @default(cuid())
+  externalRef           String?         @unique
+  title                 String
+  type                  MatterType
+  stage                 MatterStage     @default(INTAKE_ELIGIBILITY)
+  jurisdictionOffice    String?
+  clientRiskSensitivity Int?
+  caseProfile           Json?
+  organizationId        String?
+  clientId              String?
+  policySnapshotId      String?
+
+  Client         Client?         @relation(fields: [clientId], references: [id])
+  Organization   Organization?   @relation(fields: [organizationId], references: [id])
+  policySnapshot PolicySnapshot? @relation(fields: [policySnapshotId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events           MatterEvent[]
+  intakeSubmission IntakeSubmission?
+
+  @@index([clientId])
+  @@index([organizationId])
 }
 
 model MatterEvent {
-  id        String    @id @default(cuid())
-  matterId  String
-  matter    Matter    @relation(fields: [matterId], references: [id])
+  id       String    @id @default(cuid())
+  matterId String
+  type     EventType
+  payload  Json?
+  matter   Matter    @relation(fields: [matterId], references: [id])
 
-  type      EventType
-  // store structured details without over-modeling early
-  payload   Json?
-
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([matterId, createdAt])
 }
 
+// ─── Intake Models (new) ──────────────────────────────────────────────────────
+
+/// Magic-link token sent to client via WhatsApp / SMS / email
+model IntakeToken {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(uuid())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  hintType MatterType?
+  hintName String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  submission IntakeSubmission?
+
+  @@index([token])
+  @@index([createdById])
+}
+
+/// All client answers + paralegal review state for one intake session
+model IntakeSubmission {
+  id      String       @id @default(cuid())
+  tokenId String       @unique
+  token   IntakeToken  @relation(fields: [tokenId], references: [id])
+  status  IntakeStatus @default(PENDING)
+
+  // Promoted scalars for queue display and filtering
+  clientName      String?
+  clientEmail     String?
+  clientPhone     String?
+  matterType      MatterType?
+  countryOfOrigin String?
+  isDetained      Boolean     @default(false)
+
+  // All form answers stored as flexible JSON
+  answers Json @default("{}")
+
+  // Paralegal workflow fields
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNotes  String?
+
+  // Linked matter after conversion
+  matterId String? @unique
+  matter   Matter? @relation(fields: [matterId], references: [id])
+
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  documents IntakeDocument[]
+
+  @@index([status, createdAt])
+  @@index([reviewedById])
+}
+
+/// Uploaded supporting documents for an intake submission
+model IntakeDocument {
+  id           String           @id @default(cuid())
+  submissionId String
+  submission   IntakeSubmission @relation(fields: [submissionId], references: [id])
+
+  label       String
+  storagePath String
+  mimeType    String?
+  sizeBytes   Int?
+  status      IntakeDocStatus @default(PENDING)
+
+  uploadedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([submissionId])
+}
