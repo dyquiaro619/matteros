@@ -12,7 +12,11 @@ interface Props {
   onClose: () => void;
 }
 
-const T = { navy900: "#0f1923", navy800: "#141e2a", navy700: "#1a2332", teal: "#2dd4a0", gray400: "#9ca3af", gray500: "#6b7280" };
+const T = {
+  navy900: "var(--bg-app)", navy800: "var(--bg-card)", navy700: "var(--bg-input)",
+  teal: "var(--teal)", tealFg: "var(--teal-fg)",
+  gray400: "var(--text-secondary)", gray500: "var(--text-muted)",
+};
 
 export default function ConvertModal({ submissionId, defaultName, defaultType, onConverted, onClose }: Props) {
   const [title, setTitle] = useState(defaultName ? `${defaultName} — ${defaultType ? CASE_TYPE_LABELS[defaultType] : "Matter"}` : "");
@@ -23,9 +27,9 @@ export default function ConvertModal({ submissionId, defaultName, defaultType, o
 
   const inputStyle = {
     background: T.navy700,
-    border: "1px solid rgba(255,255,255,0.1)",
+    border: "1px solid var(--border-medium)",
     borderRadius: "10px",
-    color: "#fff",
+    color: "var(--text-primary)",
     width: "100%",
     fontSize: "14px",
     padding: "11px 14px",
@@ -53,11 +57,11 @@ export default function ConvertModal({ submissionId, defaultName, defaultType, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}>
+      style={{ background: "rgba(0,0,0,0.6)" }}>
       <div className="w-full max-w-md rounded-2xl p-6"
-        style={{ background: T.navy800, border: "1px solid rgba(255,255,255,0.08)" }}>
+        style={{ background: T.navy800, border: "1px solid var(--border-soft)" }}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-bold text-white text-lg">Create Matter from Intake</h2>
+          <h2 className="font-bold text-lg" style={{ color: "var(--text-primary)" }}>Create Matter from Intake</h2>
           <button onClick={onClose} style={{ color: T.gray500 }}>✕</button>
         </div>
 
@@ -96,12 +100,12 @@ export default function ConvertModal({ submissionId, defaultName, defaultType, o
 
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: "rgba(255,255,255,0.05)", color: T.gray400, border: "1px solid rgba(255,255,255,0.08)" }}>
+            style={{ background: "var(--hover-bg)", color: T.gray400, border: "1px solid var(--border-soft)" }}>
             Cancel
           </button>
           <button onClick={handleConvert} disabled={loading}
             className="flex-1 py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: T.teal, color: T.navy900 }}>
+            style={{ background: T.teal, color: T.tealFg }}>
             {loading ? "Creating…" : "Create Matter →"}
           </button>
         </div>

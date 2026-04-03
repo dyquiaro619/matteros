@@ -4,7 +4,11 @@ import { useState } from "react";
 import { MatterType } from "@prisma/client";
 import { CASE_TYPE_LABELS } from "@/lib/intake/questions";
 
-const T = { navy900: "#0f1923", navy800: "#141e2a", navy700: "#1a2332", teal: "#2dd4a0", gray400: "#9ca3af", gray500: "#6b7280" };
+const T = {
+  navy900: "var(--bg-app)", navy800: "var(--bg-card)", navy700: "var(--bg-input)",
+  teal: "var(--teal)", tealFg: "var(--teal-fg)",
+  gray400: "var(--text-secondary)", gray500: "var(--text-muted)",
+};
 
 export default function GenerateLinkModal({ onClose }: { onClose: () => void }) {
   const [hintType, setHintType] = useState<MatterType | "">(MatterType.ASYLUM);
@@ -16,9 +20,9 @@ export default function GenerateLinkModal({ onClose }: { onClose: () => void }) 
 
   const inputStyle = {
     background: T.navy700,
-    border: "1px solid rgba(255,255,255,0.1)",
+    border: "1px solid var(--border-medium)",
     borderRadius: "10px",
-    color: "#fff",
+    color: "var(--text-primary)",
     width: "100%",
     fontSize: "14px",
     padding: "11px 14px",
@@ -46,11 +50,11 @@ export default function GenerateLinkModal({ onClose }: { onClose: () => void }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}>
+      style={{ background: "rgba(0,0,0,0.6)" }}>
       <div className="w-full max-w-md rounded-2xl p-6"
-        style={{ background: T.navy800, border: "1px solid rgba(255,255,255,0.08)" }}>
+        style={{ background: T.navy800, border: "1px solid var(--border-soft)" }}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-bold text-white text-lg">Generate Intake Link</h2>
+          <h2 className="font-bold text-lg" style={{ color: "var(--text-primary)" }}>Generate Intake Link</h2>
           <button onClick={onClose} style={{ color: T.gray500 }}>✕</button>
         </div>
 
@@ -80,13 +84,13 @@ export default function GenerateLinkModal({ onClose }: { onClose: () => void }) 
             </div>
             <button onClick={generate} disabled={loading}
               className="w-full py-3 rounded-xl text-sm font-bold mt-2 transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: T.teal, color: T.navy900 }}>
+              style={{ background: T.teal, color: T.tealFg }}>
               {loading ? "Generating…" : "Generate link →"}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl p-4" style={{ background: T.navy700, border: "1px solid rgba(45,212,160,0.2)" }}>
+            <div className="rounded-xl p-4" style={{ background: T.navy700, border: "1px solid var(--teal-border)" }}>
               <p className="text-xs font-semibold mb-2" style={{ color: T.gray500 }}>Intake link</p>
               <p className="text-sm font-mono break-all" style={{ color: T.teal }}>{result.intakeUrl}</p>
             </div>
@@ -96,12 +100,12 @@ export default function GenerateLinkModal({ onClose }: { onClose: () => void }) 
             <div className="flex gap-3">
               <button onClick={copyLink}
                 className="flex-1 py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
-                style={{ background: T.teal, color: T.navy900 }}>
+                style={{ background: T.teal, color: T.tealFg }}>
                 {copied ? "✓ Copied!" : "Copy link"}
               </button>
               <button onClick={onClose}
                 className="px-5 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(255,255,255,0.05)", color: T.gray400, border: "1px solid rgba(255,255,255,0.08)" }}>
+                style={{ background: "var(--hover-bg)", color: T.gray400, border: "1px solid var(--border-soft)" }}>
                 Done
               </button>
             </div>

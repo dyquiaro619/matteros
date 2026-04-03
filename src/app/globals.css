@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #0f1923;
+/* ─── Dark theme (default) ─────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --background: #0f1923;
+  --foreground: #ffffff;
 
   /* MatterOS Design System */
   --navy-900: #0f1923;
@@ -12,6 +14,55 @@
   --teal: #2dd4a0;
   --teal-dark: #10b981;
   --teal-rgb: 45, 212, 160;
+
+  /* Theme tokens */
+  --bg-app:    #0f1923;
+  --bg-card:   #141e2a;
+  --bg-input:  #1a2332;
+
+  --text-primary:   #ffffff;
+  --text-secondary: #9ca3af;
+  --text-muted:     #6b7280;
+
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-soft:   rgba(255,255,255,0.08);
+  --border-medium: rgba(255,255,255,0.10);
+  --hover-bg:      rgba(255,255,255,0.05);
+  --row-alt:       rgba(255,255,255,0.01);
+
+  --teal-fg:     #0f1923;
+  --teal-bg:     rgba(45,212,160,0.07);
+  --teal-border: rgba(45,212,160,0.20);
+}
+
+/* ─── Light theme ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --background: #f0f4f8;
+  --foreground: #0f172a;
+
+  --bg-app:   #f0f4f8;
+  --bg-card:  #ffffff;
+  --bg-input: #f8fafc;
+
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+
+  --border-subtle: rgba(0,0,0,0.07);
+  --border-soft:   rgba(0,0,0,0.09);
+  --border-medium: rgba(0,0,0,0.12);
+  --hover-bg:      rgba(0,0,0,0.04);
+  --row-alt:       rgba(0,0,0,0.02);
+
+  --teal:        #0d9488;
+  --teal-fg:     #ffffff;
+  --teal-bg:     rgba(13,148,136,0.08);
+  --teal-border: rgba(13,148,136,0.25);
+}
+
+/* Light mode: Tailwind's text-white should follow theme */
+[data-theme="light"] .text-white {
+  color: var(--text-primary) !important;
 }
 
 @theme inline {
@@ -28,15 +79,13 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-app);
+  color: var(--text-primary);
   font-family: var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
 }
 
 /* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 /* FAQ accordion animation */
 .faq-content {
@@ -44,10 +93,7 @@ html {
   overflow: hidden;
   transition: max-height 0.3s ease-out, padding 0.3s ease-out;
 }
-
-.faq-content.open {
-  max-height: 500px;
-}
+.faq-content.open { max-height: 500px; }
 
 /* ROI input styling */
 input[type="number"]::-webkit-inner-spin-button,
